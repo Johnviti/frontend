@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RotateCw } from 'lucide-react';
 import qs from 'qs';
@@ -21,10 +21,15 @@ const initialFilterData: IFilterFormProps = {
 const Home = () => {
   const { data: shelters, loading, refresh } = useShelters({ cache: true });
   const [isModalOpen, setOpenModal] = useState<boolean>(false);
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams , setSearchParams] = useSearchParams();
+  const savedFilterData = localStorage.getItem('filterData');
+  const initialFilterDataFromStorage = savedFilterData ? JSON.parse(savedFilterData) : {};
+
+
   const [filterData, setFilterData] = useState<IFilterFormProps>({
     ...initialFilterData,
-    ...qs.parse(new URLSearchParams(window.location.search).toString()),
+    ...initialFilterDataFromStorage,
+    ...qs.parse(searchParams.toString()),
   });
 
   const [, setSearch] = useThrottle<string>(
@@ -46,6 +51,7 @@ const Home = () => {
     setSearch('');
     setFilterData(initialFilterData);
     setSearchParams('');
+    localStorage.removeItem('filterData');
     refresh();
   }, [refresh, setSearch, setSearchParams]);
 
@@ -62,6 +68,7 @@ const Home = () => {
         skipNulls: true,
       });
       setSearchParams(searchQuery);
+      localStorage.setItem('filterData', JSON.stringify(values));
       refresh({
         params: {
           search: searchQuery,
@@ -86,6 +93,12 @@ const Home = () => {
       true
     );
   }, [refresh, filterData, shelters.filters, shelters.page, shelters.perPage]);
+
+  useEffect(() => {
+    refresh({
+      params: new URLSearchParams(qs.stringify(filterData)),
+    });
+  }, [filterData, refresh]);
 
   return (
     <div className="flex flex-col h-screen items-center">
